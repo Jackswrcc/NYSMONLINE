@@ -10,8 +10,8 @@ app = Flask(__name__)
 # URL of the CSV file
 csv_url = "https://www.atmos.albany.edu/products/nysm/nysm_latest.csv"
 
-# Directory to save the file
-save_directory = "/Users/swrcc/Downloads/cams/NYSMcsv"
+# ✅ Safe directory for deployment environments like Render
+save_directory = "/tmp/NYSMcsv"
 file_name = "nysm_latest.csv"
 file_path = os.path.join(save_directory, file_name)
 
@@ -21,6 +21,9 @@ headers = []
 
 def download_csv(url, save_path):
     try:
+        # Ensure the directory exists
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
         # Send a GET request to the URL
         response = requests.get(url)
         response.raise_for_status()  # Raise an error for bad status codes
@@ -62,8 +65,10 @@ start_periodic_download()
 
 @app.route("/")
 def display_csv():
-    # Ensure the directory exists and download the CSV
+    # Ensure the directory exists before saving
     os.makedirs(save_directory, exist_ok=True)
+
+    # Download the latest CSV
     download_csv(csv_url, file_path)
 
     # Append the new CSV data to the accumulated data
