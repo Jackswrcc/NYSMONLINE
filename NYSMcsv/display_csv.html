@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NYSM CSV Data</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+    </style>
+</head>
+<body>
+    <h1>NYSM CSV Data</h1>
+    <table id="csvTable">
+        <thead>
+            <tr id="tableHeader"></tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+    </table>
+
+    <script>
+        async function fetchCSV() {
+            const response = await fetch('/nysm_latest.csv');
+            if (!response.ok) {
+                console.error('Failed to fetch CSV file');
+                return;
+            }
+            const csvText = await response.text();
+            displayCSV(csvText);
+        }
+
+        function displayCSV(csvText) {
+            const rows = csvText.split('\n').filter(row => row.trim() !== '');
+            const tableHeader = document.getElementById('tableHeader');
+            const tableBody = document.getElementById('tableBody');
+
+            rows.forEach((row, index) => {
+                const cells = row.split(',');
+                const tr = document.createElement('tr');
+
+                cells.forEach(cell => {
+                    const td = document.createElement(index === 0 ? 'th' : 'td');
+                    td.textContent = cell.trim();
+                    tr.appendChild(td);
+                });
+
+                if (index === 0) {
+                    tableHeader.appendChild(tr);
+                } else {
+                    tableBody.appendChild(tr);
+                }
+            });
+        }
+
+        fetchCSV();
+    </script>
+</body>
+</html>
