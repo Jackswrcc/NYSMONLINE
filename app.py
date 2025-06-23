@@ -10,8 +10,8 @@ app = Flask(__name__)
 # URL of the CSV file
 csv_url = "https://www.atmos.albany.edu/products/nysm/nysm_latest.csv"
 
-# Directory to save the file
-save_directory = "/Users/swrcc/Downloads/cams/NYSMcsv"
+# ✅ Safe save location for platforms like Render
+save_directory = "/tmp/NYSMcsv"
 file_name = "nysm_latest.csv"
 file_path = os.path.join(save_directory, file_name)
 
@@ -21,23 +21,23 @@ headers = []
 
 def download_csv(url, save_path):
     try:
-        # Add headers to mimic a browser request
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-        }
-        # Send a GET request to the URL with headers
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()  # Raise an error for bad status codes
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
 
-        # Write the content to a file
+        # Spoofed headers to simulate a browser on UAlbany network
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                          "AppleWebKit/537.36 (KHTML, like Gecko) "
+                          "Chrome/114.0.0.0 Safari/537.36",
+            "Referer": "https://www.nysmesonet.org/",
+            "Accept-Language": "en-US,en;q=0.9",
+        }
+
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+
         with open(save_path, 'wb') as file:
             file.write(response.content)
         print(f"File downloaded successfully and saved to {save_path}")
-    except requests.exceptions.HTTPError as e:
-        if response.status_code == 403:
-            print(f"Error downloading the file: 403 Forbidden. Skipping download.")
-        else:
-            print(f"Error downloading the file: {e}")
     except requests.exceptions.RequestException as e:
         print(f"Error downloading the file: {e}")
 
@@ -61,33 +61,40 @@ def periodic_download(interval, url, save_path):
         time.sleep(interval)
 
 def start_periodic_download():
-    # Start a background thread to download the CSV every 5 minutes and 30 seconds
-    interval = 5 * 60 + 30  # 5 minutes and 30 seconds in seconds
+    interval = 5 * 60 + 30  # 5 minutes and 30 seconds
     thread = threading.Thread(target=periodic_download, args=(interval, csv_url, file_path), daemon=True)
     thread.start()
 
-# Start the periodic download thread when the app starts
+# Start the background thread
 start_periodic_download()
 
 @app.route("/")
 def display_csv():
-    # Ensure the directory exists and download the CSV
+    # Ensure the directory exists
     os.makedirs(save_directory, exist_ok=True)
+
+    # Download the latest CSV
     download_csv(csv_url, file_path)
 
-    # Append the new CSV data to the accumulated data
+    # Append the new CSV data
     append_csv_data(file_path)
 
-    # Render the accumulated data in an HTML table
+    # Render in HTML
     html_template = """
     <!DOCTYPE html>
     <html>
     <head>
         <title>NYSM Data</title>
+        <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            table { border-collapse: collapse; width: 100%; }
+            th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+        </style>
     </head>
     <body>
         <h1>NYSM Accumulated Data</h1>
-        <table border="1">
+        <table>
             <thead>
                 <tr>
                     {% for header in headers %}
